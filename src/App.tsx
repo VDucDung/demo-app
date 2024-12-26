@@ -50,9 +50,10 @@ function App(): JSX.Element {
   const handleSendMessage = async (): Promise<void> => {
     if (liff.isLoggedIn() && liff.isApiAvailable('shareTargetPicker')) {
       try {
+        const currentUrl = window.location.href; 
         await liff.shareTargetPicker([{
           type: 'text',
-          text: 'Hello from my LINE Mini App!'
+          text: `Check this out: ${currentUrl}`
         }]);
       } catch (err) {
         setError(`Error sending message: ${err instanceof Error ? err.message : String(err)}`);
@@ -62,7 +63,6 @@ function App(): JSX.Element {
     }
   };
   
-
   return (
     <div className="min-h-screen bg-gray-100 p-4">
       <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
@@ -101,7 +101,7 @@ function App(): JSX.Element {
               className="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
               type="button"
             >
-              Send Message
+              Share with friends
             </button>
             
             <button
