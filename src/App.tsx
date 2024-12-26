@@ -31,6 +31,7 @@ function App(): JSX.Element {
       setError(`Error getting profile: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
+  
 
   const handleLogin = (): void => {
     if (!liff.isLoggedIn()) {
@@ -49,17 +50,18 @@ function App(): JSX.Element {
   const handleSendMessage = async (): Promise<void> => {
     if (liff.isLoggedIn() && liff.isApiAvailable('shareTargetPicker')) {
       try {
-        await liff.shareTargetPicker([
-          {
-            type: 'text',
-            text: 'Hello from my LINE Mini App!'
-          }
-        ]);
+        await liff.shareTargetPicker([{
+          type: 'text',
+          text: 'Hello from my LINE Mini App!'
+        }]);
       } catch (err) {
         setError(`Error sending message: ${err instanceof Error ? err.message : String(err)}`);
       }
+    } else {
+      setError('Share target picker is not available.');
     }
   };
+  
 
   return (
     <div className="min-h-screen bg-gray-100 p-4">
