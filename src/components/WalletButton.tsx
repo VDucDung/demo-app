@@ -13,7 +13,6 @@ export const WalletButton: React.FC<WalletButtonProps> = ({
   onDisconnect,
   error
 }) => {
-  // Hàm format địa chỉ ví để hiển thị
   const formatAddress = (address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
@@ -31,7 +30,7 @@ export const WalletButton: React.FC<WalletButtonProps> = ({
         type="button"
       >
         {walletAddress 
-          ? `Connected: ${formatAddress(walletAddress)}`
+          ? `${formatAddress(walletAddress)}`
           : 'Connect Wallet'
         }
       </button>

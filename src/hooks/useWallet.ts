@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { toast } from 'react-toastify';
 
 export const useWallet = () => {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
@@ -6,16 +7,18 @@ export const useWallet = () => {
 
   const connectWallet = useCallback(async () => {
     try {
-      // Kiểm tra xem Kaikas đã được cài đặt chưa
       if (typeof window.klaytn === 'undefined') {
-        throw new Error('Kaikas wallet is not installed');
+        toast.error('Please install Kaikas wallet to connect.', {
+          position: 'top-right',
+          autoClose: 5000,
+          hideProgressBar: true,
+        });
+        return;
       }
 
-      // Yêu cầu kết nối ví
       const accounts = await window.klaytn.enable();
       
       if (accounts && accounts.length > 0) {
-        // Lưu địa chỉ ví
         setWalletAddress(accounts[0]);
         console.log('Connected wallet:', accounts[0]);
       } else {
@@ -24,6 +27,12 @@ export const useWallet = () => {
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to connect wallet');
       console.error('Wallet connection error:', error);
+
+      toast.error(error instanceof Error ? error.message : 'Failed to connect wallet', {
+        position: 'top-right',
+        autoClose: 5000,
+        hideProgressBar: true,
+      });
     }
   }, []);
 

@@ -4,6 +4,8 @@ import axios from 'axios';
 import { UserProfile } from './types';
 import { useWallet } from './hooks/useWallet';
 import { WalletButton } from './components/WalletButton';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css'; // 
 
 const VERIFY_API_URL = import.meta.env.VITE_VERIFY_API_URL as string;
 const LIFF_ID = import.meta.env.VITE_LIFF_ID as string;
@@ -16,7 +18,7 @@ interface VerifyResponse {
 
 const LoadingSpinner = () => (
   <div className="flex justify-center items-center p-4">
-    <img 
+    <img
       src="https://developers.line.biz/media/line-mini-app/LINE_spinner_light.svg"
       alt="Loading..."
       className="w-12 h-12"
@@ -34,14 +36,14 @@ const useLINEAuth = () => {
   const verifyToken = useCallback(async (accessToken: string): Promise<UserProfile> => {
     try {
       const response = await axios.post<VerifyResponse>(
-        VERIFY_API_URL, 
+        VERIFY_API_URL,
         { access_token: accessToken }
       );
-      
+
       if (!response.data.success || !response.data.userInfo) {
         throw new Error(response.data.message || 'Verification failed');
       }
-      
+
       console.log('Verification successful:', response.data);
       return response.data.userInfo;
     } catch (error) {
@@ -76,7 +78,7 @@ const useLINEAuth = () => {
       setIsLoading(true);
       await liff.init({ liffId: LIFF_ID });
       setIsInitialized(true);
-      
+
       if (liff.isLoggedIn()) {
         setIsLoggedIn(true);
         await fetchUserProfile();
@@ -94,7 +96,7 @@ const useLINEAuth = () => {
 
   const login = useCallback((): void => {
     if (!liff.isLoggedIn()) {
-      setIsLoading(true); // Set loading before login
+      setIsLoading(true);
       liff.login();
     }
   }, []);
@@ -185,53 +187,57 @@ function App(): JSX.Element {
     }
   };
 
+
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-    <div className="w-full max-w-md mx-4 bg-white rounded-lg shadow-md p-6">
-      <h1 className="text-2xl font-bold text-center mb-6">LINE Mini App</h1>
+    <>
+      <ToastContainer />
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="w-full max-w-md mx-4 bg-white rounded-lg shadow-md p-6">
+          <h1 className="text-2xl font-bold text-center mb-6">LINE Mini App</h1>
 
-      {error && <ErrorMessage message={error} />}
-      
-      {isLoading ? (
-        <LoadingSpinner />
-      ) : !isLoggedIn ? (
-        <button
-          onClick={login}
-          className="w-full bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600"
-          type="button"
-        >
-          Login with LINE
-        </button>
-      ) : (
-        <div className="space-y-4">
-          {profile && <ProfileCard profile={profile} />}
+          {error && <ErrorMessage message={error} />}
 
-          <button
-            onClick={() => void handleShareMessage()}
-            className="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
-            type="button"
-          >
-            Share with friends
-          </button>
+          {isLoading ? (
+            <LoadingSpinner />
+          ) : !isLoggedIn ? (
+            <button
+              onClick={login}
+              className="w-full bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600"
+              type="button"
+            >
+              Login with LINE
+            </button>
+          ) : (
+            <div className="space-y-4">
+              {profile && <ProfileCard profile={profile} />}
 
-          <WalletButton 
-          walletAddress={walletAddress}
-          onConnect={connectWallet}
-          onDisconnect={disconnectWallet}
-          error={error}
-        />
+              <button
+                onClick={() => void handleShareMessage()}
+                className="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
+                type="button"
+              >
+                Share with friends
+              </button>
 
-          <button
-            onClick={logout}
-            className="w-full bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600"
-            type="button"
-          >
-            Logout
-          </button>
+              <WalletButton
+                walletAddress={walletAddress}
+                onConnect={connectWallet}
+                onDisconnect={disconnectWallet}
+                error={error}
+              />
+
+              <button
+                onClick={logout}
+                className="w-full bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600"
+                type="button"
+              >
+                Logout
+              </button>
+            </div>
+          )}
         </div>
-      )}
-    </div>
-  </div>
+      </div>
+    </>
   );
 }
 
