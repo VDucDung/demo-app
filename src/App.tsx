@@ -1,6 +1,17 @@
 import { useEffect, useState } from 'react';
 import liff from '@line/liff';
+import axios, { AxiosResponse } from 'axios';
 import { UserProfile } from './types';
+
+interface VerifyResponse {
+  status: string;
+  message: string;
+  data?: any;
+}
+
+interface VerifyRequest {
+  access_token: string;
+}
 
 function App(): JSX.Element {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -16,7 +27,7 @@ function App(): JSX.Element {
       await liff.init({ liffId: import.meta.env.VITE_LIFF_ID as string });
       if (liff.isLoggedIn()) {
         setIsLoggedIn(true);
-        void fetchUserProfile();
+        await fetchUserProfile();
       }
     } catch (err) {
       setError(`Error initializing LIFF: ${err instanceof Error ? err.message : String(err)}`);
@@ -26,12 +37,35 @@ function App(): JSX.Element {
   const fetchUserProfile = async (): Promise<void> => {
     try {
       const userProfile: UserProfile = await liff.getProfile();
+      const accessToken = liff.getAccessToken();
+      console.log('Access token:', accessToken);
+      
+      if (!accessToken) {
+        throw new Error('Access token not found');
+      }
+  
+      await verifyToken(accessToken);
+  
       setProfile(userProfile);
     } catch (err) {
-      setError(`Error getting profile: ${err instanceof Error ? err.message : String(err)}`);
+      setError(`Error fetching profile: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
   
+
+  const verifyToken = async (accessToken: string): Promise<void> => {
+    const url = 'https://41dc-222-252-11-28.ngrok-free.app/line/verify';
+    const payload: VerifyRequest = { access_token: accessToken };
+    try {
+      const response: AxiosResponse<VerifyResponse> = await axios.post(url, payload);
+      if (response.data.status !== 'success') {
+        throw new Error(response.data.message || 'Verification failed');
+      }
+      console.log('Verification successful:', response.data);
+    } catch (error: any) {
+      setError(error.response?.data?.message || error.message || 'Verification error');
+    }
+  };
 
   const handleLogin = (): void => {
     if (!liff.isLoggedIn()) {
@@ -50,11 +84,13 @@ function App(): JSX.Element {
   const handleSendMessage = async (): Promise<void> => {
     if (liff.isLoggedIn() && liff.isApiAvailable('shareTargetPicker')) {
       try {
-        const currentUrl = window.location.href; 
-        await liff.shareTargetPicker([{
-          type: 'text',
-          text: `Check this out: ${currentUrl}`
-        }]);
+        const currentUrl = window.location.href;
+        await liff.shareTargetPicker([
+          {
+            type: 'text',
+            text: `Check this out: ${currentUrl}`,
+          },
+        ]);
       } catch (err) {
         setError(`Error sending message: ${err instanceof Error ? err.message : String(err)}`);
       }
@@ -62,12 +98,12 @@ function App(): JSX.Element {
       setError('Share target picker is not available.');
     }
   };
-  
+
   return (
     <div className="min-h-screen bg-gray-100 p-4">
       <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
         <h1 className="text-2xl font-bold text-center mb-6">LINE Mini App</h1>
-        
+
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
             {error}
@@ -95,7 +131,7 @@ function App(): JSX.Element {
                 <p className="text-gray-600">{profile.userId}</p>
               </div>
             )}
-            
+
             <button
               onClick={() => void handleSendMessage()}
               className="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
@@ -103,7 +139,7 @@ function App(): JSX.Element {
             >
               Share with friends
             </button>
-            
+
             <button
               onClick={handleLogout}
               className="w-full bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600"
