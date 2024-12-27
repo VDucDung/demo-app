@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback } from 'react';
 import liff from '@line/liff';
 import axios from 'axios';
 import { UserProfile } from './types';
+import { useWallet } from './hooks/useWallet';
+import { WalletButton } from './components/WalletButton';
 
 const VERIFY_API_URL = import.meta.env.VITE_VERIFY_API_URL as string;
 const LIFF_ID = import.meta.env.VITE_LIFF_ID as string;
@@ -168,6 +170,13 @@ function App(): JSX.Element {
     setError
   } = useLINEAuth();
 
+
+  const {
+    walletAddress,
+    connectWallet,
+    disconnectWallet
+  } = useWallet();
+
   const handleShareMessage = async () => {
     try {
       await shareMessage();
@@ -204,6 +213,13 @@ function App(): JSX.Element {
           >
             Share with friends
           </button>
+
+          <WalletButton 
+          walletAddress={walletAddress}
+          onConnect={connectWallet}
+          onDisconnect={disconnectWallet}
+          error={error}
+        />
 
           <button
             onClick={logout}
