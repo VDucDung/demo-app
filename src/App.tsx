@@ -147,7 +147,7 @@ const ErrorMessage = ({ message }: { message: string }) => (
 const ProfileCard = ({ profile }: { profile: UserProfile }) => (
   <div className="text-center">
     <img
-      src={profile.pictureUrl}
+      src={profile.pictureUrl ?? `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.userId}&backgroundColor=b6e3f4,c0aede,d1d4f9`}
       alt="Profile"
       className="w-24 h-24 rounded-full mx-auto mb-2"
     />
@@ -177,45 +177,45 @@ function App(): JSX.Element {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4">
-      <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
-        <h1 className="text-2xl font-bold text-center mb-6">LINE Mini App</h1>
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+    <div className="w-full max-w-md mx-4 bg-white rounded-lg shadow-md p-6">
+      <h1 className="text-2xl font-bold text-center mb-6">LINE Mini App</h1>
 
-        {error && <ErrorMessage message={error} />}
-        
-        {isLoading ? (
-          <LoadingSpinner />
-        ) : !isLoggedIn ? (
+      {error && <ErrorMessage message={error} />}
+      
+      {isLoading ? (
+        <LoadingSpinner />
+      ) : !isLoggedIn ? (
+        <button
+          onClick={login}
+          className="w-full bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600"
+          type="button"
+        >
+          Login with LINE
+        </button>
+      ) : (
+        <div className="space-y-4">
+          {profile && <ProfileCard profile={profile} />}
+
           <button
-            onClick={login}
-            className="w-full bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600"
+            onClick={() => void handleShareMessage()}
+            className="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
             type="button"
           >
-            Login with LINE
+            Share with friends
           </button>
-        ) : (
-          <div className="space-y-4">
-            {profile && <ProfileCard profile={profile} />}
 
-            <button
-              onClick={() => void handleShareMessage()}
-              className="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
-              type="button"
-            >
-              Share with friends
-            </button>
-
-            <button
-              onClick={logout}
-              className="w-full bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600"
-              type="button"
-            >
-              Logout
-            </button>
-          </div>
-        )}
-      </div>
+          <button
+            onClick={logout}
+            className="w-full bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600"
+            type="button"
+          >
+            Logout
+          </button>
+        </div>
+      )}
     </div>
+  </div>
   );
 }
 
