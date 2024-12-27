@@ -7,30 +7,41 @@ const VERIFY_API_URL = import.meta.env.VITE_VERIFY_API_URL as string;
 const LIFF_ID = import.meta.env.VITE_LIFF_ID as string;
 
 interface VerifyResponse {
-  status: string;
+  success: boolean;
   message: string;
-  data?: unknown;
+  userInfo?: UserProfile;
 }
 
+const LoadingSpinner = () => (
+  <div className="flex justify-center items-center p-4">
+    <img 
+      src="https://developers.line.biz/media/line-mini-app/LINE_spinner_light.svg"
+      alt="Loading..."
+      className="w-12 h-12"
+    />
+  </div>
+);
 
 const useLINEAuth = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [error, setError] = useState<string>('');
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const verifyToken = useCallback(async (accessToken: string): Promise<void> => {
+  const verifyToken = useCallback(async (accessToken: string): Promise<UserProfile> => {
     try {
       const response = await axios.post<VerifyResponse>(
         VERIFY_API_URL, 
         { access_token: accessToken }
       );
       
-      if (response.data.status !== 'success') {
+      if (!response.data.success || !response.data.userInfo) {
         throw new Error(response.data.message || 'Verification failed');
       }
       
       console.log('Verification successful:', response.data);
+      return response.data.userInfo;
     } catch (error) {
       const errorMessage = axios.isAxiosError(error)
         ? error.response?.data?.message || error.message
@@ -41,6 +52,7 @@ const useLINEAuth = () => {
 
   const fetchUserProfile = useCallback(async (): Promise<void> => {
     try {
+      setIsLoading(true);
       const accessToken = liff.getAccessToken();
       if (!accessToken) {
         throw new Error('Access token not found');
@@ -48,16 +60,18 @@ const useLINEAuth = () => {
 
       console.log('access token:', accessToken);
 
-      const userProfile = await liff.getProfile();
-      await verifyToken(accessToken);
+      const userProfile = await verifyToken(accessToken);
       setProfile(userProfile);
     } catch (err) {
       setError(`Error fetching profile: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setIsLoading(false);
     }
   }, [verifyToken]);
 
   const initializeLiff = useCallback(async (): Promise<void> => {
     try {
+      setIsLoading(true);
       await liff.init({ liffId: LIFF_ID });
       setIsInitialized(true);
       
@@ -67,6 +81,8 @@ const useLINEAuth = () => {
       }
     } catch (err) {
       setError(`Error initializing LIFF: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setIsLoading(false);
     }
   }, [fetchUserProfile]);
 
@@ -76,15 +92,18 @@ const useLINEAuth = () => {
 
   const login = useCallback((): void => {
     if (!liff.isLoggedIn()) {
+      setIsLoading(true); // Set loading before login
       liff.login();
     }
   }, []);
 
   const logout = useCallback((): void => {
     if (liff.isLoggedIn()) {
+      setIsLoading(true);
       liff.logout();
       setIsLoggedIn(false);
       setProfile(null);
+      setIsLoading(false);
     }
   }, []);
 
@@ -111,6 +130,7 @@ const useLINEAuth = () => {
     error,
     isLoggedIn,
     isInitialized,
+    isLoading,
     login,
     logout,
     shareMessage,
@@ -118,7 +138,6 @@ const useLINEAuth = () => {
   };
 };
 
-// Components
 const ErrorMessage = ({ message }: { message: string }) => (
   <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
     {message}
@@ -137,12 +156,12 @@ const ProfileCard = ({ profile }: { profile: UserProfile }) => (
   </div>
 );
 
-// Main App Component
 function App(): JSX.Element {
   const {
     profile,
     error,
     isLoggedIn,
+    isLoading,
     login,
     logout,
     shareMessage,
@@ -163,8 +182,10 @@ function App(): JSX.Element {
         <h1 className="text-2xl font-bold text-center mb-6">LINE Mini App</h1>
 
         {error && <ErrorMessage message={error} />}
-
-        {!isLoggedIn ? (
+        
+        {isLoading ? (
+          <LoadingSpinner />
+        ) : !isLoggedIn ? (
           <button
             onClick={login}
             className="w-full bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600"
