@@ -1,30 +1,66 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import liff from '@line/liff';
-import axios, { AxiosResponse } from 'axios';
+import axios from 'axios';
 import { UserProfile } from './types';
+
+const VERIFY_API_URL = import.meta.env.VITE_VERIFY_API_URL as string;
+const LIFF_ID = import.meta.env.VITE_LIFF_ID as string;
 
 interface VerifyResponse {
   status: string;
   message: string;
-  data?: any;
+  data?: unknown;
 }
 
-interface VerifyRequest {
-  access_token: string;
-}
 
-function App(): JSX.Element {
+const useLINEAuth = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [error, setError] = useState<string>('');
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [isInitialized, setIsInitialized] = useState<boolean>(false);
 
-  useEffect(() => {
-    void initializeLiff();
+  const verifyToken = useCallback(async (accessToken: string): Promise<void> => {
+    try {
+      const response = await axios.post<VerifyResponse>(
+        VERIFY_API_URL, 
+        { access_token: accessToken }
+      );
+      
+      if (response.data.status !== 'success') {
+        throw new Error(response.data.message || 'Verification failed');
+      }
+      
+      console.log('Verification successful:', response.data);
+    } catch (error) {
+      const errorMessage = axios.isAxiosError(error)
+        ? error.response?.data?.message || error.message
+        : 'Verification error';
+      throw new Error(errorMessage);
+    }
   }, []);
 
-  const initializeLiff = async (): Promise<void> => {
+  const fetchUserProfile = useCallback(async (): Promise<void> => {
     try {
-      await liff.init({ liffId: import.meta.env.VITE_LIFF_ID as string });
+      const accessToken = liff.getAccessToken();
+      if (!accessToken) {
+        throw new Error('Access token not found');
+      }
+
+      console.log('access token:', accessToken);
+
+      const userProfile = await liff.getProfile();
+      await verifyToken(accessToken);
+      setProfile(userProfile);
+    } catch (err) {
+      setError(`Error fetching profile: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }, [verifyToken]);
+
+  const initializeLiff = useCallback(async (): Promise<void> => {
+    try {
+      await liff.init({ liffId: LIFF_ID });
+      setIsInitialized(true);
+      
       if (liff.isLoggedIn()) {
         setIsLoggedIn(true);
         await fetchUserProfile();
@@ -32,70 +68,92 @@ function App(): JSX.Element {
     } catch (err) {
       setError(`Error initializing LIFF: ${err instanceof Error ? err.message : String(err)}`);
     }
-  };
+  }, [fetchUserProfile]);
 
-  const fetchUserProfile = async (): Promise<void> => {
-    try {
-      const userProfile: UserProfile = await liff.getProfile();
-      const accessToken = liff.getAccessToken();
-      console.log('Access token:', accessToken);
-      
-      if (!accessToken) {
-        throw new Error('Access token not found');
-      }
-  
-      await verifyToken(accessToken);
-  
-      setProfile(userProfile);
-    } catch (err) {
-      setError(`Error fetching profile: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  };
-  
+  useEffect(() => {
+    void initializeLiff();
+  }, [initializeLiff]);
 
-  const verifyToken = async (accessToken: string): Promise<void> => {
-    const url = 'https://41dc-222-252-11-28.ngrok-free.app/line/verify';
-    const payload: VerifyRequest = { access_token: accessToken };
-    try {
-      const response: AxiosResponse<VerifyResponse> = await axios.post(url, payload);
-      if (response.data.status !== 'success') {
-        throw new Error(response.data.message || 'Verification failed');
-      }
-      console.log('Verification successful:', response.data);
-    } catch (error: any) {
-      setError(error.response?.data?.message || error.message || 'Verification error');
-    }
-  };
-
-  const handleLogin = (): void => {
+  const login = useCallback((): void => {
     if (!liff.isLoggedIn()) {
       liff.login();
     }
-  };
+  }, []);
 
-  const handleLogout = (): void => {
+  const logout = useCallback((): void => {
     if (liff.isLoggedIn()) {
       liff.logout();
       setIsLoggedIn(false);
       setProfile(null);
     }
-  };
+  }, []);
 
-  const handleSendMessage = async (): Promise<void> => {
-    if (liff.isLoggedIn() && liff.isApiAvailable('shareTargetPicker')) {
-      try {
-        const currentUrl = window.location.href;
-        await liff.shareTargetPicker([
-          {
-            type: 'text',
-            text: `Check this out: ${currentUrl}`,
-          },
-        ]);
-      } catch (err) {
-        setError(`Error sending message: ${err instanceof Error ? err.message : String(err)}`);
-      }
-    } else {
-      setError('Share target picker is not available.');
+  const shareMessage = useCallback(async (): Promise<void> => {
+    if (!liff.isLoggedIn() || !liff.isApiAvailable('shareTargetPicker')) {
+      throw new Error('Share target picker is not available.');
+    }
+
+    try {
+      const currentUrl = window.location.href;
+      await liff.shareTargetPicker([
+        {
+          type: 'text',
+          text: `Check this out: ${currentUrl}`,
+        },
+      ]);
+    } catch (err) {
+      throw new Error(`Error sending message: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }, []);
+
+  return {
+    profile,
+    error,
+    isLoggedIn,
+    isInitialized,
+    login,
+    logout,
+    shareMessage,
+    setError
+  };
+};
+
+// Components
+const ErrorMessage = ({ message }: { message: string }) => (
+  <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+    {message}
+  </div>
+);
+
+const ProfileCard = ({ profile }: { profile: UserProfile }) => (
+  <div className="text-center">
+    <img
+      src={profile.pictureUrl}
+      alt="Profile"
+      className="w-24 h-24 rounded-full mx-auto mb-2"
+    />
+    <p className="font-semibold">{profile.displayName}</p>
+    <p className="text-gray-600">{profile.userId}</p>
+  </div>
+);
+
+// Main App Component
+function App(): JSX.Element {
+  const {
+    profile,
+    error,
+    isLoggedIn,
+    login,
+    logout,
+    shareMessage,
+    setError
+  } = useLINEAuth();
+
+  const handleShareMessage = async () => {
+    try {
+      await shareMessage();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -104,15 +162,11 @@ function App(): JSX.Element {
       <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
         <h1 className="text-2xl font-bold text-center mb-6">LINE Mini App</h1>
 
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
-          </div>
-        )}
+        {error && <ErrorMessage message={error} />}
 
         {!isLoggedIn ? (
           <button
-            onClick={handleLogin}
+            onClick={login}
             className="w-full bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600"
             type="button"
           >
@@ -120,20 +174,10 @@ function App(): JSX.Element {
           </button>
         ) : (
           <div className="space-y-4">
-            {profile && (
-              <div className="text-center">
-                <img
-                  src={profile.pictureUrl}
-                  alt="Profile"
-                  className="w-24 h-24 rounded-full mx-auto mb-2"
-                />
-                <p className="font-semibold">{profile.displayName}</p>
-                <p className="text-gray-600">{profile.userId}</p>
-              </div>
-            )}
+            {profile && <ProfileCard profile={profile} />}
 
             <button
-              onClick={() => void handleSendMessage()}
+              onClick={() => void handleShareMessage()}
               className="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
               type="button"
             >
@@ -141,7 +185,7 @@ function App(): JSX.Element {
             </button>
 
             <button
-              onClick={handleLogout}
+              onClick={logout}
               className="w-full bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600"
               type="button"
             >
