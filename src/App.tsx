@@ -13,7 +13,7 @@ const LIFF_ID = import.meta.env.VITE_LIFF_ID as string;
 interface VerifyResponse {
   success: boolean;
   message: string;
-  userInfo?: UserProfile;
+  user?: UserProfile;
 }
 
 const LoadingSpinner = () => (
@@ -40,12 +40,12 @@ const useLINEAuth = () => {
         { access_token: accessToken }
       );
 
-      if (!response.data.success || !response.data.userInfo) {
+      if (!response.data.success || !response.data.user) {
         throw new Error(response.data.message || 'Verification failed');
       }
 
       console.log('Verification successful:', response.data);
-      return response.data.userInfo;
+      return response.data.user;
     } catch (error) {
       const errorMessage = axios.isAxiosError(error)
         ? error.response?.data?.message || error.message
@@ -151,12 +151,12 @@ const ErrorMessage = ({ message }: { message: string }) => (
 const ProfileCard = ({ profile }: { profile: UserProfile }) => (
   <div className="text-center">
     <img
-      src={profile.pictureUrl ?? `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.userId}&backgroundColor=b6e3f4,c0aede,d1d4f9`}
+      src={profile.pictureUrl ?? `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.userLineId}&backgroundColor=b6e3f4,c0aede,d1d4f9`}
       alt="Profile"
       className="w-24 h-24 rounded-full mx-auto mb-2"
     />
     <p className="font-semibold">{profile.displayName}</p>
-    <p className="text-gray-600">{profile.userId}</p>
+    <p className="text-gray-600">{profile.userLineId}</p>
   </div>
 );
 

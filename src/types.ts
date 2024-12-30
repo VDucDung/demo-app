@@ -1,5 +1,5 @@
 export interface UserProfile {
-  userId: string;
+  userLineId: string;
   displayName: string;
   pictureUrl?: string;
   statusMessage?: string;
